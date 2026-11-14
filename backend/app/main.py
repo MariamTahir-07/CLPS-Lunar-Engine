@@ -1,15 +1,23 @@
 import datetime as dt, logging, math, os
+from pathlib import Path
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from .science import geometry, horizon, slope, decision_engine, terrain_loader, windows
 
 log = logging.getLogger("clps")
 app = FastAPI(title="CLPS Lunar Landing Site Engine", version="0.2.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+# In production (Render), allow the same origin; in dev, allow Vite's dev server.
+_cors_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+_render_url = os.environ.get("RENDER_EXTERNAL_URL")
+if _render_url:
+    _cors_origins.append(_render_url.rstrip("/"))
+app.add_middleware(CORSMiddleware, allow_origins=_cors_origins, allow_methods=["*"], allow_headers=["*"])
 
 # DEMONSTRATION scenarios: coordinates are approximate placeholders, NOT verified site data.
 SITES = {
@@ -147,3 +155,28 @@ def compare(r: CompareRequest):
             "seeds and placeholder parameters, not real lunar sites. Do not rank or select sites from this table." if mode == "demonstration" else
             "Same user-supplied DEM file used for each site; provenance of the file is not verified; geometry is still an approximate model; no PSR data.")
     return {"data_mode": mode, "real_data": False, "notice": note, "window": {"start": r.start.isoformat(), "days": r.days, "step_hours": r.step_hours}, "sites": rows}
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(status_code=204)
+
+@app.get("/{path:path}", include_in_schema=False)
+def frontend(path: str):
+    if path == "api" or path.startswith("api/"):
+        raise HTTPException(404, "Not Found")
+
+    dist = FRONTEND_DIST.resolve()
+    index = dist / "index.html"
+    if not index.is_file():
+        raise HTTPException(404, "Frontend build not found")
+
+    if path:
+        requested_file = (dist / path).resolve()
+        if requested_file != dist and dist not in requested_file.parents:
+            raise HTTPException(404, "Not Found")
+        if requested_file.is_file():
+            return FileResponse(requested_file)
+        if requested_file.exists() or Path(path).suffix or path == "assets" or path.startswith("assets/"):
+            raise HTTPException(404, "Not Found")
+
+    return FileResponse(index)

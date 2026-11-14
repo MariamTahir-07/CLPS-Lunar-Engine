@@ -2,6 +2,7 @@
 #   powershell -ExecutionPolicy Bypass -File .\scripts\run-dev.ps1
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
+$port = if ($env:PORT) { $env:PORT } else { "10000" }
 $py = "$root\.venv\Scripts\python.exe"
 if (-not (Test-Path $py)) {
   if (Get-Command py -ErrorAction SilentlyContinue) { py -3 -m venv "$root\.venv" }
@@ -18,11 +19,11 @@ if (-not (Test-Path "$root\frontend\node_modules")) {
   Pop-Location
   if ($code -ne 0) { throw "npm ci failed" }
 }
-Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location '$root\backend'; & '$py' -m uvicorn app.main:app --port 8000"
+Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location '$root\backend'; & '$py' -m uvicorn app.main:app --port $port"
 Start-Process powershell -ArgumentList "-NoExit","-Command","Set-Location '$root\frontend'; npm.cmd run dev"
 $ok = $false
 for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
-  try { Invoke-RestMethod "http://localhost:8000/api/health" -TimeoutSec 2 | Out-Null; $ok = $true } catch { Start-Sleep -Seconds 1 }
+  try { Invoke-RestMethod "http://localhost:$port/api/health" -TimeoutSec 2 | Out-Null; $ok = $true } catch { Start-Sleep -Seconds 1 }
 }
-if ($ok) { Write-Host "Backend healthy. Opening http://localhost:5173"; Start-Process "http://localhost:5173" }
-else { Write-Warning "Backend did not answer on :8000 within 30 s - check the backend window for errors." }
+if ($ok) { Write-Host "Backend healthy on port $port. Opening http://localhost:5173"; Start-Process "http://localhost:5173" }
+else { Write-Warning "Backend did not answer on :$port within 30 s - check the backend window for errors." }

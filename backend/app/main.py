@@ -17,6 +17,11 @@ _cors_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 _render_url = os.environ.get("RENDER_EXTERNAL_URL")
 if _render_url:
     _cors_origins.append(_render_url.rstrip("/"))
+_extra_origins = os.environ.get("CLPS_ALLOWED_ORIGINS")
+if _extra_origins:
+    for o in _extra_origins.split(","):
+        if o.strip():
+            _cors_origins.append(o.strip().rstrip("/"))
 app.add_middleware(CORSMiddleware, allow_origins=_cors_origins, allow_methods=["*"], allow_headers=["*"])
 
 # DEMONSTRATION scenarios: coordinates are approximate placeholders, NOT verified site data.

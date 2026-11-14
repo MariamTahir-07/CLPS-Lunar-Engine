@@ -1,0 +1,11 @@
+.venv/
+venv/
+node_modules/
+**/node_modules/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+dist/
+.pytest_cache/

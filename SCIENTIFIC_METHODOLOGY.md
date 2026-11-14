@@ -1,0 +1,7 @@
+# Methodology
+Slope: atan(|grad z|) by finite differences; NaN stays NaN; slope depends on pixel size (baseline).
+Horizon (exact sphere, R=1,737,400 m): target at ground distance s, height z, theta=s/R: elevation = atan2((z-z0) - 2(R+z)sin^2(theta/2), (R+z)sin(theta)). Flat ground gives -theta/2 (negative; verified by test). Max over samples along each azimuth (0=N, clockwise). Bilinear sampling. Unknown terrain = NaN (never 0). Rays crossing data gaps are flagged incomplete (horizon is then a lower bound). Rays stop at the DEM edge; coverage is reported. The grid is assumed north-up unless a grid-north bearing is supplied (the loader computes it from the CRS).
+Visibility: body CENTRE above the interpolated horizon. Sun (0.27 deg radius) and Earth (~0.9 deg radius) disc size and refraction-free vacuum are ignored. Unknown horizon samples are excluded from percentages (None if nothing is known).
+Sun/Earth geometry: ILLUSTRATIVE analytic model (Sun sub-latitude +-1.54 deg yearly; Earth libration +-6.7 / +-7.9 deg; arbitrary phases). Not SPICE. Time: UTC-like, no TDB/leap-second handling.
+PA->ME (frame_align.py): R = pxform(PA, ME); displacement = |R r - r|. Verified only on a synthetic frames kernel (math + SPICE call path). NOT verified against real NAIF lunar kernels; NOT connected to the Sun/Earth analysis. The ~870 m claim remains unverified; the guide's "derived from time-varying DE440 libration angles" should be checked against NAIF docs. Frame names depend on the FK loaded.
+Thermal, power, RF link, PSR distance: not implemented.
